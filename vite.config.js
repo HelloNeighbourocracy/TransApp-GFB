@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 // If you deploy to GitHub Pages at https://<user>.github.io/<repo>/,
 // set base to '/<repo>/'. For a custom domain or Vercel/Netlify, keep it '/'.
 export default defineConfig({
-  base: '/GFB-TransApp/',
+  base: '/TransApp-GFB/',
   plugins: [
     react(),
     VitePWA({
@@ -18,8 +18,8 @@ export default defineConfig({
         name: 'Live Translator for Zoom',
         short_name: 'Translator',
         description: 'Real-time speech translation for online meetings, powered by your browser\u2019s built-in speech recognition',
-        start_url: '/GFB-TransApp/',
-        scope: '/GFB-TransApp/',
+        start_url: '/TransApp-GFB/',
+        scope: '/TransApp-GFB/',
         display: 'standalone',
         orientation: 'portrait',
         background_color: '#0B0F1E',
