@@ -3,23 +3,12 @@ import { nativeLangName } from './languages'
 // Why not jsPDF? jsPDF only ships the base14 PDF fonts (Helvetica, Times,
 // Courier), which cover Latin text only -- there is no built-in support
 // for Tamil, Malayalam, Telugu, Kannada, Bengali, Devanagari (Hindi/
-// Marathi) or Arabic glyphs. Feeding it Unicode text for those scripts
-// produces garbled output (wrong glyphs), not an error -- which is what
-// showed up in the exported file.
+// Marathi), Arabic, or CJK (Chinese, Japanese, Korean) glyphs. Feeding
+// it Unicode text for those scripts produces garbled output, not an error.
 //
 // Fix: open a print-ready HTML page loaded with proper Unicode webfonts
-// (Google's Noto Sans family, which covers all 13 supported scripts) and
-// use the browser's own "Print -> Save as PDF" -- the browser's real text
-// shaping engine renders every script correctly, which a bundled PDF
-// library cannot do without embedding a separate font per script.
-//
-// Labels: each line used to be tagged "[English]" / "[Tamil]" etc. -- but
-// those tags were written as English words, which is exactly backwards
-// for a reader who doesn't read English. Instead: no per-line tag at all
-// (original = smaller/lighter, translation = larger/bold, same visual
-// convention as the on-screen transcript log), and the one header line
-// that does need a label uses each language's own native script for its
-// own name so it's self-readable either way.
+// (Google's Noto Sans family, covering all 19 supported scripts) and
+// use the browser's own "Print -> Save as PDF".
 
 const FONT_HREF =
   'https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600' +
@@ -30,11 +19,16 @@ const FONT_HREF =
   '&family=Noto+Sans+Bengali:wght@400;600' +
   '&family=Noto+Sans+Devanagari:wght@400;600' +
   '&family=Noto+Sans+Arabic:wght@400;600' +
+  '&family=Noto+Sans+SC:wght@400;600' +      // Simplified Chinese
+  '&family=Noto+Sans+JP:wght@400;600' +      // Japanese
+  '&family=Noto+Sans+KR:wght@400;600' +      // Korean
   '&display=swap'
 
 const FONT_STACK =
-  "'Noto Sans', 'Noto Sans Tamil', 'Noto Sans Malayalam', 'Noto Sans Telugu', " +
-  "'Noto Sans Kannada', 'Noto Sans Bengali', 'Noto Sans Devanagari', 'Noto Sans Arabic', sans-serif"
+  "'Noto Sans', 'Noto Sans SC', 'Noto Sans JP', 'Noto Sans KR', " +
+  "'Noto Sans Tamil', 'Noto Sans Malayalam', 'Noto Sans Telugu', " +
+  "'Noto Sans Kannada', 'Noto Sans Bengali', 'Noto Sans Devanagari', " +
+  "'Noto Sans Arabic', sans-serif"
 
 function escapeHtml(str) {
   return String(str)
@@ -103,12 +97,10 @@ export function downloadTranscript(transcripts, sourceLang, targetLang) {
     printWindow.print()
   }
 
-  // Wait for the Noto Sans webfonts to actually finish loading before
-  // printing -- otherwise the first print can render Tamil/Malayalam/etc.
-  // as blank boxes because the fallback system font kicks in too early.
+  // Wait for Noto Sans webfonts (including CJK) to load before printing.
   const fontsReady = printWindow.document.fonts && printWindow.document.fonts.ready
   if (fontsReady) {
-    Promise.race([fontsReady, new Promise((resolve) => setTimeout(resolve, 2500))]).then(triggerPrint)
+    Promise.race([fontsReady, new Promise((resolve) => setTimeout(resolve, 3000))]).then(triggerPrint)
   } else {
     setTimeout(triggerPrint, 800)
   }
