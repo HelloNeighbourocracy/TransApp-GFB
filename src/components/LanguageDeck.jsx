@@ -41,21 +41,31 @@ export default function LanguageDeck({ sourceLang, targetLang, setSourceLang, se
 }
 
 function LangSelect({ label, icon, value, onChange, disabled, align }) {
+  // Find selected language to show its flag next to the dropdown
+  const selected = LANGUAGES.find((l) => l.code === value)
+
   return (
     <div className={align === 'right' ? 'md:text-right' : ''}>
       <label className="block mb-2 text-sm uppercase tracking-wider text-mist font-medium">
         {icon} {label}
       </label>
-      <div className="dial-select rounded-2xl">
+      <div className="dial-select rounded-2xl flex items-center">
+        {/* Flag badge */}
+        <span
+          className="pl-4 text-2xl select-none pointer-events-none"
+          aria-hidden="true"
+        >
+          {selected?.flag}
+        </span>
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
-          className="w-full bg-transparent text-fog p-4 rounded-2xl text-lg font-display font-medium outline-none appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 bg-transparent text-fog pl-2 pr-4 py-4 rounded-2xl text-lg font-display font-medium outline-none appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {LANGUAGES.map((l) => (
             <option key={l.code} value={l.code} className="bg-panel text-fog">
-              {l.flag} {l.name}
+              {l.flag}  {l.name} — {l.nativeName}
             </option>
           ))}
         </select>
