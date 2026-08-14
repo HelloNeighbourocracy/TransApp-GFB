@@ -204,7 +204,7 @@ export default function App() {
 
       <footer className="max-w-2xl text-center mt-8">
         <p className="text-sm text-mist">
-          Needs an internet connection for live speech recognition and translation -- no installs, no login, no cost.
+          Needs an internet connection for live speech recognition and translation.
           Supports {LANGUAGES.length} languages: {LANGUAGES.map((l) => l.name).join(', ')}.
         </p>
       </footer>
