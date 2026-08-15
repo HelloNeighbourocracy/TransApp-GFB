@@ -145,10 +145,56 @@ function NButton({ children, onClick, color = '#555', glow = 'rgba(0,0,0,0.3)', 
   )
 }
 
+// Rectangular button specifically for Signup card
+function SignupBtn({ children, onClick, disabled = false, primary = false }) {
+  const [hov, setHov] = useState(false)
+  const [press, setPress] = useState(false)
+  return (
+    <button
+      onClick={!disabled ? onClick : undefined}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => { setHov(false); setPress(false) }}
+      onMouseDown={() => setPress(true)}
+      onMouseUp={() => setPress(false)}
+      disabled={disabled}
+      style={{
+        width: '100%', padding: '13px 0',
+        borderRadius: 14, border: 'none',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        fontSize: 14, fontWeight: 800,
+        color: primary ? '#fff' : '#555',
+        background: primary
+          ? (press ? '#059669' : 'linear-gradient(135deg,#34d399,#059669)')
+          : 'linear-gradient(145deg,#e0e0e0,#f8f8f8)',
+        boxShadow: press
+          ? 'inset 4px 4px 10px rgba(0,0,0,0.18)'
+          : hov
+            ? primary
+              ? '6px 6px 18px rgba(5,150,105,0.4), -4px -4px 12px rgba(255,255,255,0.6), 0 0 24px rgba(52,211,153,0.4)'
+              : '6px 6px 18px rgba(0,0,0,0.15), -4px -4px 12px rgba(255,255,255,0.7)'
+            : primary
+              ? '8px 8px 20px rgba(5,150,105,0.25), -5px -5px 14px rgba(255,255,255,0.6)'
+              : '8px 8px 20px rgba(0,0,0,0.12), -5px -5px 14px rgba(255,255,255,0.8)',
+        transform: press ? 'scale(0.98) translateY(1px)' : hov ? 'scale(1.02) translateY(-1px)' : 'scale(1)',
+        transition: 'all 200ms cubic-bezier(0.34,1.56,0.64,1)',
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
 // Contact platform button (WhatsApp / Telegram / Email)
 function PlatformBtn({ icon, label, color, glow, href, draftMsg }) {
   const [hov, setHov] = useState(false)
-  const fullHref = draftMsg ? `${href}${encodeURIComponent(draftMsg)}` : href
+  // Platform-specific URL handling:
+  // Instagram (ig.me) does not support pre-filled text — opens DM directly
+  // WhatsApp, Telegram: ?text= + encoded message
+  // Email: ?body= + encoded message (href already has ?body= or ?subject=...&body=)
+  const fullHref = !draftMsg || href.includes('ig.me')
+    ? href
+    : `${href}${encodeURIComponent(draftMsg)}`
   return (
     <a
       href={fullHref}
@@ -451,35 +497,127 @@ export default function AuthGate({ children }) {
 
       {/* ── SIGNUP ── */}
       {screen === S.SIGNUP && (
-        <Card>
-          <h2 style={{ color: '#333', fontSize: 18, fontWeight: 800, margin: '0 0 12px' }}>Create Account</h2>
-          <NInput placeholder="First Name *" value={name} onChange={e => setName(e.target.value)} />
-          <NInput placeholder="Last Name *" value={surname} onChange={e => setSurname(e.target.value)} />
-          <NInput type="email" placeholder="Email *" value={email} onChange={e => setEmail(e.target.value)} />
-          <NInput type="password" placeholder="Password *" value={password} onChange={e => setPassword(e.target.value)} />
-          <NInput placeholder="Phone Number *" value={phone} onChange={e => setPhone(e.target.value)} />
-          <div style={{ width: '85%', textAlign: 'left', fontSize: 11, color: '#666', margin: '6px 0 2px', paddingLeft: 4 }}>
-            🗣️ Speaker Language (Default)
+        <div style={{
+          background: 'linear-gradient(160deg, #f5f5f5 0%, #e0e0e0 100%)',
+          boxShadow: '20px 20px 50px rgba(0,0,0,0.18), -14px -14px 30px rgba(255,255,255,0.92), inset 1px 1px 3px rgba(255,255,255,0.8)',
+          borderRadius: 28,
+          width: 420,
+          maxWidth: '95vw',
+          padding: '36px 36px 28px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 22 }}>
+            <div style={{ fontSize: 32, marginBottom: 6 }}>🌐</div>
+            <h2 style={{
+              color: '#222', fontSize: 22, fontWeight: 900, margin: '0 0 4px',
+              background: 'linear-gradient(135deg,#6d28d9,#0891b2)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            }}>Create Account</h2>
+            <p style={{ color: '#888', fontSize: 12, margin: 0 }}>7-Day Free Trial · No credit card needed</p>
           </div>
-          <NSelect value={signupSrc} onChange={e => setSignupSrc(e.target.value)}>
-            {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
-          </NSelect>
-          <div style={{ width: '85%', textAlign: 'left', fontSize: 11, color: '#666', margin: '6px 0 2px', paddingLeft: 4 }}>
-            🌍 Subtitle Language (Default)
+
+          {/* Two-column row: First + Last name */}
+          <div style={{ display: 'flex', gap: 10, width: '100%', marginBottom: 2 }}>
+            <input
+              placeholder="First Name *"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              style={{
+                flex: 1, padding: '11px 16px', borderRadius: 14, border: 'none', outline: 'none',
+                background: 'linear-gradient(145deg,#d8d8d8,#f8f8f8)',
+                boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.11), inset -3px -3px 6px rgba(255,255,255,0.85)',
+                fontSize: 13, color: '#333',
+              }}
+            />
+            <input
+              placeholder="Last Name *"
+              value={surname}
+              onChange={e => setSurname(e.target.value)}
+              style={{
+                flex: 1, padding: '11px 16px', borderRadius: 14, border: 'none', outline: 'none',
+                background: 'linear-gradient(145deg,#d8d8d8,#f8f8f8)',
+                boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.11), inset -3px -3px 6px rgba(255,255,255,0.85)',
+                fontSize: 13, color: '#333',
+              }}
+            />
           </div>
-          <NSelect value={signupTgt} onChange={e => setSignupTgt(e.target.value)}>
-            {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
-          </NSelect>
-          {err && <p style={{ color: 'red', fontSize: 11, margin: '6px 0', padding: '0 10px' }}>{err}</p>}
-          <NButton color="linear-gradient(135deg,#34d399,#059669)" glow="rgba(5,150,105,0.6)"
-            onClick={handleSignup} disabled={loading}>
-            {loading ? 'Creating…' : 'Sign Up for Trial'}
-          </NButton>
-          <NButton color="linear-gradient(135deg,#64748b,#334155)" glow="rgba(100,116,139,0.5)"
-            onClick={() => { setErr(''); setScreen(S.HOME) }}>
-            ← Back
-          </NButton>
-        </Card>
+
+          {/* Full-width fields */}
+          {[
+            { type: 'email',    ph: 'Email *',        val: email,    set: setEmail },
+            { type: 'password', ph: 'Password *',     val: password, set: setPassword },
+            { type: 'tel',      ph: 'Phone Number *', val: phone,    set: setPhone },
+          ].map(({ type, ph, val, set }) => (
+            <input
+              key={ph}
+              type={type}
+              placeholder={ph}
+              value={val}
+              onChange={e => set(e.target.value)}
+              style={{
+                width: '100%', padding: '11px 16px', margin: '6px 0',
+                borderRadius: 14, border: 'none', outline: 'none', boxSizing: 'border-box',
+                background: 'linear-gradient(145deg,#d8d8d8,#f8f8f8)',
+                boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.11), inset -3px -3px 6px rgba(255,255,255,0.85)',
+                fontSize: 13, color: '#333',
+              }}
+            />
+          ))}
+
+          {/* Language selectors */}
+          <div style={{ display: 'flex', gap: 10, width: '100%', marginTop: 8 }}>
+            {[
+              { label: '🗣️ Speaker Language', val: signupSrc, set: setSignupSrc },
+              { label: '🌍 Subtitle Language', val: signupTgt, set: setSignupTgt },
+            ].map(({ label, val, set }) => (
+              <div key={label} style={{ flex: 1 }}>
+                <div style={{ fontSize: 10, color: '#888', marginBottom: 4, paddingLeft: 4 }}>{label}</div>
+                <select
+                  value={val}
+                  onChange={e => set(e.target.value)}
+                  style={{
+                    width: '100%', padding: '9px 12px', borderRadius: 14,
+                    border: 'none', outline: 'none', cursor: 'pointer', appearance: 'none',
+                    background: 'linear-gradient(145deg,#d8d8d8,#f8f8f8)',
+                    boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.11), inset -3px -3px 6px rgba(255,255,255,0.85)',
+                    fontSize: 12, color: '#333',
+                  }}
+                >
+                  {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+
+          {err && (
+            <p style={{
+              color: '#dc2626', fontSize: 12, margin: '10px 0 0',
+              background: 'rgba(220,38,38,0.08)', borderRadius: 10,
+              padding: '8px 14px', width: '100%', boxSizing: 'border-box', textAlign: 'center',
+            }}>{err}</p>
+          )}
+
+          {/* Buttons */}
+          <div style={{ width: '100%', marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <SignupBtn
+              onClick={handleSignup}
+              disabled={loading}
+              primary
+            >
+              {loading ? 'Creating account…' : '✨ Sign Up for Free Trial'}
+            </SignupBtn>
+            <SignupBtn onClick={() => { setErr(''); setScreen(S.HOME) }}>
+              ← Back
+            </SignupBtn>
+          </div>
+
+          <p style={{ color: '#aaa', fontSize: 10, marginTop: 14, textAlign: 'center' }}>
+            By signing up you agree to use this service responsibly.
+          </p>
+        </div>
       )}
 
       {/* ── LOGIN ── */}
@@ -617,28 +755,28 @@ export default function AuthGate({ children }) {
                 icon="💬" label="WhatsApp"
                 color="linear-gradient(135deg,#25D366,#128C7E)"
                 glow="rgba(37,211,102,0.6)"
-                href={`https://wa.me/919489007005?text=`}
+                href="https://wa.me/+919489007005?text="
                 draftMsg={PRO_MSG}
               />
               <PlatformBtn
                 icon="✈️" label="Telegram"
                 color="linear-gradient(135deg,#0088cc,#006699)"
                 glow="rgba(0,136,204,0.6)"
-                href={`https://t.me/priprix_official?text=`}
+                href="https://t.me/priprix_official?text="
                 draftMsg={PRO_MSG}
               />
               <PlatformBtn
                 icon="📸" label="Instagram"
                 color="linear-gradient(135deg,#f58529,#dd2a7b,#8134af,#515bd4)"
                 glow="rgba(221,42,123,0.6)"
-                href={`https://ig.me/m/priprix_official`}
+                href="https://ig.me/m/priprix_official"
                 draftMsg={PRO_MSG}
               />
               <PlatformBtn
                 icon="📧" label="Email"
                 color="linear-gradient(135deg,#ea4335,#c5221f)"
                 glow="rgba(234,67,53,0.6)"
-                href={`mailto:priprixtrader@gmail.com?subject=Pro Version Enquiry&body=`}
+                href="mailto:priprixtrader@gmail.com?subject=Pro%20Version%20Enquiry&body="
                 draftMsg={PRO_MSG}
               />
             </div>
