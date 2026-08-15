@@ -371,7 +371,7 @@ export default function AuthGate({ children }) {
   }
 
   // ─── Screens ───────────────────────────────────────────────────────────────
-  const PRO_MSG = `Hi! I'm interested in purchasing the Pro Version of TransApp.\n\nName: \nPlan: ₹200/month  OR  ₹2000/year\nEmail (registered): ${email || '(your email)'}\n\nPlease let me know the next steps. Thank you!`
+  const PRO_MSG = `Hi! I'm interested in purchasing the Pro Version of TransApp.\n\nName: \nPlan: ₹200/month ($2)  OR  ₹2000/year ($20)\nEmail (registered): ${email || '(your email)'}\n\nPlease let me know the next steps. Thank you!`
 
   return (
     <div style={{
@@ -428,10 +428,12 @@ export default function AuthGate({ children }) {
               <div style={{ fontSize: 36, marginBottom: 8 }}>⚡</div>
               <h2 style={{ color: '#333', fontSize: 20, fontWeight: 800, margin: '0 0 6px' }}>Pro Version</h2>
               <div style={{ margin: '4px 0 12px' }}>
-                <p style={{ color: '#FF9800', fontWeight: 800, fontSize: 18, margin: '2px 0' }}>₹200 / month</p>
-                <p style={{ color: '#888', fontSize: 11, margin: 0 }}>≈ $2 / month</p>
-                <p style={{ color: '#FF9800', fontWeight: 800, fontSize: 18, margin: '8px 0 2px' }}>₹2000 / year</p>
-                <p style={{ color: '#888', fontSize: 11, margin: 0 }}>≈ $20 / year</p>
+                <p style={{ color: '#FF9800', fontWeight: 800, fontSize: 18, margin: '2px 0' }}>
+                  ₹200 <span style={{ color: '#aaa', fontSize: 13, fontWeight: 500 }}>/ $2</span> <span style={{ color: '#888', fontSize: 12, fontWeight: 400 }}>per month</span>
+                </p>
+                <p style={{ color: '#FF9800', fontWeight: 800, fontSize: 18, margin: '8px 0 2px' }}>
+                  ₹2000 <span style={{ color: '#aaa', fontSize: 13, fontWeight: 500 }}>/ $20</span> <span style={{ color: '#888', fontSize: 12, fontWeight: 400 }}>per year</span>
+                </p>
                 <div style={{
                   background: 'linear-gradient(135deg,#22c55e,#16a34a)',
                   color: '#fff', fontWeight: 800, fontSize: 12,
@@ -578,16 +580,14 @@ export default function AuthGate({ children }) {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <span style={{ color: '#555', fontWeight: 600, fontSize: 13 }}>📅 Monthly</span>
-                <span>
-                  <span style={{ color: '#d97706', fontWeight: 800, fontSize: 20 }}>₹200</span>
-                  <span style={{ color: '#888', fontSize: 11 }}> / $2</span>
+                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                  <span style={{ color: '#d97706', fontWeight: 800, fontSize: 18 }}>₹200 <span style={{ color: '#888', fontWeight: 600, fontSize: 14 }}>/ $2</span></span>
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: '#555', fontWeight: 600, fontSize: 13 }}>📆 Yearly</span>
-                <span>
-                  <span style={{ color: '#d97706', fontWeight: 800, fontSize: 20 }}>₹2000</span>
-                  <span style={{ color: '#888', fontSize: 11 }}> / $20</span>
+                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                  <span style={{ color: '#d97706', fontWeight: 800, fontSize: 18 }}>₹2000 <span style={{ color: '#888', fontWeight: 600, fontSize: 14 }}>/ $20</span></span>
                 </span>
               </div>
               <div style={{
@@ -625,6 +625,13 @@ export default function AuthGate({ children }) {
                 color="linear-gradient(135deg,#0088cc,#006699)"
                 glow="rgba(0,136,204,0.6)"
                 href={`https://t.me/priprix_official?text=`}
+                draftMsg={PRO_MSG}
+              />
+              <PlatformBtn
+                icon="📸" label="Instagram"
+                color="linear-gradient(135deg,#f58529,#dd2a7b,#8134af,#515bd4)"
+                glow="rgba(221,42,123,0.6)"
+                href={`https://ig.me/m/priprix_official`}
                 draftMsg={PRO_MSG}
               />
               <PlatformBtn
