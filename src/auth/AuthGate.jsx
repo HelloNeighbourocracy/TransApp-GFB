@@ -249,6 +249,7 @@ export default function AuthGate({ children }) {
   const [signupSrc, setSignupSrc] = useState('en')
   const [signupTgt, setSignupTgt] = useState('ta')
   const [newPw, setNewPw] = useState('')
+  const [signupSuccess, setSignupSuccess] = useState(false)
   const [newPw2, setNewPw2] = useState('')
 
   // ── Boot: check existing session ──
@@ -320,7 +321,9 @@ export default function AuthGate({ children }) {
       if (error) { setErr(error.message); return }
 
       await markTrialUsed(deviceFp)
-      // Signup done → send user to Login page to authenticate manually
+      // Signup done → clear password, go to Login page
+      setPassword('')
+      setSignupSuccess(true)
       setScreen(S.LOGIN)
       setErr('')
     } finally {
@@ -627,16 +630,25 @@ export default function AuthGate({ children }) {
       {/* ── LOGIN ── */}
       {screen === S.LOGIN && (
         <Card>
-          <h2 style={{ color: '#333', fontSize: 18, fontWeight: 800, margin: '0 0 16px' }}>Login</h2>
+          <h2 style={{ color: '#333', fontSize: 18, fontWeight: 800, margin: '0 0 8px' }}>Login</h2>
+          {signupSuccess && (
+            <div style={{
+              background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.35)',
+              borderRadius: 10, padding: '7px 12px', marginBottom: 8, width: '85%',
+              fontSize: 11, color: '#16a34a', textAlign: 'center', fontWeight: 600,
+            }}>
+              ✅ Account created! Please log in.
+            </div>
+          )}
           <NInput type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
           <NInput type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
           {err && <p style={{ color: 'red', fontSize: 11, margin: '6px 0', padding: '0 10px' }}>{err}</p>}
           <NButton color="linear-gradient(135deg,#6d28d9,#4f46e5)" glow="rgba(109,40,217,0.6)"
-            onClick={() => handleLogin()} disabled={loading}>
+            onClick={() => { setSignupSuccess(false); handleLogin() }} disabled={loading}>
             {loading ? 'Logging in…' : 'Login'}
           </NButton>
           <NButton color="linear-gradient(135deg,#64748b,#334155)" glow="rgba(100,116,139,0.5)"
-            onClick={() => { setErr(''); setScreen(S.HOME) }}>
+            onClick={() => { setErr(''); setSignupSuccess(false); setScreen(S.HOME) }}>
             ← Back
           </NButton>
         </Card>
