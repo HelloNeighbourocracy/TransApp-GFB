@@ -1,15 +1,16 @@
 {
   "name": "live-translator-pwa",
   "private": true,
-  "version": "3.0.0",
+  "version": "4.0.0",
   "type": "module",
-  "description": "Live Translator for Zoom / Google Meet — real-time speech-to-subtitle translation across 13 languages using the browser's native speech recognition.",
+  "description": "Live Translator for Zoom / Google Meet — real-time speech-to-subtitle translation across 19 languages with trial/pro auth.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
