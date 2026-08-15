@@ -16,6 +16,7 @@ const S = {
   PLAN_SELECT:   'plan_select',  // After login: Trial 7d  vs  Pro Version
   PRO_CONTACT:   'pro_contact',  // Pro contact + pricing
   CHANGE_PW:     'change_pw',
+  SUCCESS:       'success',      // Login success animation before entering app
   APP:           'app',          // Authenticated + plan chosen → render children
 }
 
@@ -319,8 +320,9 @@ export default function AuthGate({ children }) {
       if (error) { setErr(error.message); return }
 
       await markTrialUsed(deviceFp)
-      // Auto login after signup
-      await handleLogin(true)
+      // Signup done → send user to Login page to authenticate manually
+      setScreen(S.LOGIN)
+      setErr('')
     } finally {
       setLoading(false)
     }
@@ -351,7 +353,9 @@ export default function AuthGate({ children }) {
         setScreen(S.HOME)
         setErr('Your session was taken over by another device. Please log in again.')
       })
-      setScreen(S.PLAN_SELECT)
+      // Show success animation, then move to plan select
+      setScreen(S.SUCCESS)
+      setTimeout(() => setScreen(S.PLAN_SELECT), 2200)
     } finally {
       if (!afterSignup) setLoading(false)
     }
@@ -789,7 +793,66 @@ export default function AuthGate({ children }) {
         </div>
       )}
 
-      {/* ── CHANGE PASSWORD ── */}
+      {/* ── LOGIN SUCCESS ── */}
+      {screen === S.SUCCESS && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+          {/* Outer embossed ring */}
+          <div style={{
+            width: 360, height: 360,
+            borderRadius: '50%',
+            background: 'linear-gradient(145deg, #e8e8e8, #d0d0d0)',
+            boxShadow: '22px 22px 45px rgba(0,0,0,0.18), -15px -15px 30px rgba(255,255,255,0.92)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {/* Inner embossed circle */}
+            <div style={{
+              width: 280, height: 280,
+              borderRadius: '50%',
+              background: 'linear-gradient(145deg, #f0f0f0, #d8d8d8)',
+              boxShadow: '14px 14px 30px rgba(0,0,0,0.15), -10px -10px 22px rgba(255,255,255,0.9), inset 2px 2px 5px rgba(255,255,255,0.6), inset -2px -2px 5px rgba(0,0,0,0.06)',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 12,
+            }}>
+              {/* Checkmark button */}
+              <div style={{
+                width: 72, height: 72,
+                borderRadius: '50%',
+                background: 'linear-gradient(145deg, #f5f5f5, #dcdcdc)',
+                boxShadow: '8px 8px 18px rgba(0,0,0,0.15), -6px -6px 14px rgba(255,255,255,0.9), inset 1px 1px 3px rgba(255,255,255,0.7)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                animation: 'successPop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards',
+              }}>
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                  <path d="M7 16.5L13 22.5L25 10" stroke="#22c55e" strokeWidth="3.5"
+                    strokeLinecap="round" strokeLinejoin="round"
+                    strokeDasharray="30" strokeDashoffset="30"
+                    style={{ animation: 'drawCheck 0.6s 0.3s ease forwards' }}
+                  />
+                </svg>
+              </div>
+              <div>
+                <p style={{ color: '#222', fontWeight: 800, fontSize: 22, margin: '0 0 4px', textAlign: 'center' }}>
+                  Success!
+                </p>
+                <p style={{ color: '#888', fontSize: 14, margin: 0, textAlign: 'center' }}>
+                  Login Successfully
+                </p>
+              </div>
+            </div>
+          </div>
+          <style>{`
+            @keyframes successPop {
+              0% { transform: scale(0.5); opacity: 0; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+            @keyframes drawCheck {
+              to { stroke-dashoffset: 0; }
+            }
+          `}</style>
+        </div>
+      )}
+
+            {/* ── CHANGE PASSWORD ── */}
       {screen === S.CHANGE_PW && (
         <Card>
           <h2 style={{ color: '#333', fontSize: 18, fontWeight: 800, margin: '0 0 16px' }}>Change Password</h2>
