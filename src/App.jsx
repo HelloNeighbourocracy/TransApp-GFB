@@ -7,12 +7,14 @@ import LanguageDeck from './components/LanguageDeck'
 import SubtitlePanel from './components/SubtitlePanel'
 import ControlDeck from './components/ControlDeck'
 import TranscriptLog from './components/TranscriptLog'
+import AuthGate from './auth/AuthGate'
 
 const SUPPORTED = isSpeechRecognitionSupported()
 
-export default function App() {
-  const [sourceLang, setSourceLang] = useState('en')
-  const [targetLang, setTargetLang] = useState('ta')
+function MainApp({ user, isPro, trialLangs, onLogout, daysLeft, expiry, onChangePw }) {
+  // Trial: locked to signup languages; Pro: free to change
+  const [sourceLang, setSourceLang] = useState(trialLangs.source)
+  const [targetLang, setTargetLang] = useState(trialLangs.target)
   const [isRunning, setIsRunning] = useState(false)
   const [subtitle, setSubtitle] = useState(
     SUPPORTED
@@ -40,36 +42,28 @@ export default function App() {
     }
   }, [])
 
+  // Trial: clamp language selectors to signup languages only
+  const handleSetSourceLang = (code) => {
+    if (!isPro) return // locked for trial
+    setSourceLang(code)
+  }
+  const handleSetTargetLang = (code) => {
+    if (!isPro) return
+    setTargetLang(code)
+  }
+
   const handleFinal = async (text) => {
     if (!text) return
-
     const now = Date.now()
     const { text: prevText, time: prevTime, id: prevId } = lastFinalRef.current
     const normalizedPrev = prevText.trim().toLowerCase()
     const normalizedNew = text.trim().toLowerCase()
-
-    // The browser's speech engine sometimes fires the exact same final
-    // result twice in a row -- ignore the repeat outright.
     if (normalizedNew === normalizedPrev) return
 
-    // It also often re-fires a growing version of the SAME utterance as it
-    // gets more audio ("hello" -> "hello good" -> "hello good evening"),
-    // rather than one clean final per sentence. If the new text is just an
-    // extension of the previous one and arrived within a couple seconds,
-    // treat it as a revision of the same utterance -- reusing its id --
-    // instead of a new sentence.
     const isRevision =
       prevText && now - prevTime < 4000 && normalizedNew.startsWith(normalizedPrev)
     const utteranceId = isRevision ? prevId : ++utteranceIdRef.current
-
     lastFinalRef.current = { text, time: now, id: utteranceId }
-
-    // Translation is a network call, so two overlapping revisions can
-    // resolve out of order. Matching by this utterance's own id (instead
-    // of "replace whatever is currently last in the array") means a
-    // late-arriving response always updates the correct line, never a
-    // different one -- this is what was causing mismatched text/
-    // translation pairs when responses came back in the wrong order.
     const myRequestId = ++latestRequestRef.current
 
     setStatus('Translating...')
@@ -79,16 +73,11 @@ export default function App() {
     setTranscripts((prev) => {
       const idx = prev.findIndex((e) => e.id === utteranceId)
       if (idx !== -1) {
-        const next = [...prev]
-        next[idx] = entry
-        return next
+        const next = [...prev]; next[idx] = entry; return next
       }
       return [...prev, entry]
     })
 
-    // Only let the most recently STARTED request drive the big live
-    // subtitle -- if an older, slower response finishes after a newer one,
-    // it shouldn't flash outdated text back onto the screen.
     if (myRequestId === latestRequestRef.current) {
       setSubtitle(translated)
       setStatus('Listening...')
@@ -96,14 +85,12 @@ export default function App() {
   }
 
   const handleInterim = (text) => {
-    // Show the speaker's live words immediately while translation catches up.
     setStatus('Listening...')
     setSubtitle(text)
   }
 
   const start = () => {
     if (!SUPPORTED) return
-
     lastFinalRef.current = { text: '', time: 0, id: 0 }
     utteranceIdRef.current = 0
     latestRequestRef.current = 0
@@ -122,18 +109,11 @@ export default function App() {
         }
       }
     })
-
     if (!recognizer) return
 
-    // Chrome stops the recognizer after periods of silence or ~60s;
-    // restart it automatically while the user hasn't pressed Stop.
     recognizer.onend = () => {
       if (shouldRunRef.current) {
-        try {
-          recognizer.start()
-        } catch {
-          // already running / transient -- ignore
-        }
+        try { recognizer.start() } catch { }
       }
     }
 
@@ -154,13 +134,42 @@ export default function App() {
     setSubtitle('Stopped. Press Start meeting to resume.')
   }
 
+  const meta = user?.user_metadata || {}
+
   return (
     <div className="min-h-screen flex flex-col items-center px-4 py-10 md:py-16 font-body">
+      {/* Header bar with user info */}
+      <div style={{
+        position: 'fixed', top: 0, right: 0, left: 0, zIndex: 50,
+        background: 'rgba(11,15,30,0.92)', backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        padding: '8px 20px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {isPro
+            ? <span style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff', borderRadius: 20, padding: '3px 12px', fontWeight: 800, fontSize: 12 }}>⚡ Pro</span>
+            : <span style={{ background: 'linear-gradient(135deg,#34d399,#059669)', color: '#fff', borderRadius: 20, padding: '3px 12px', fontWeight: 800, fontSize: 12 }}>🕐 Trial · {daysLeft}d left</span>
+          }
+          <span style={{ color: '#94a3b8', fontSize: 12 }}>{meta.name} {meta.surname}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <button onClick={onChangePw}
+            style={{ fontSize: 11, color: '#8b5cf6', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+            Change password
+          </button>
+          <button onClick={onLogout}
+            style={{ fontSize: 11, color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+            Logout
+          </button>
+        </div>
+      </div>
+
       {/* Hero */}
-      <header className="text-center max-w-2xl mb-10">
+      <header className="text-center max-w-2xl mb-10" style={{ marginTop: 52 }}>
         <div className="inline-flex items-center gap-2 chip text-cyan/90 border border-cyan/25 rounded-full px-3 py-1 mb-5">
           <span className="status-dot live" />
-          REAL-TIME - FREE - BROWSER-NATIVE
+          REAL-TIME — BROWSER-NATIVE
         </div>
         <h1 className="font-display text-4xl md:text-5xl font-bold text-fog mb-3 tracking-tight">
           Live Translator <span className="text-violet">for Zoom</span>
@@ -168,6 +177,17 @@ export default function App() {
         <p className="text-mist text-lg">
           Any language. Real time. Nobody in class gets left behind.
         </p>
+        {/* Trial language lock notice */}
+        {!isPro && (
+          <div style={{
+            background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)',
+            borderRadius: 12, padding: '8px 16px', marginTop: 12,
+            color: '#fbbf24', fontSize: 13,
+          }}>
+            🔒 Trial: Languages locked to your signup selection.{' '}
+            <span style={{ color: '#94a3b8' }}>Upgrade to Pro for all 19 languages + transcript download.</span>
+          </div>
+        )}
       </header>
 
       {!SUPPORTED && (
@@ -181,22 +201,23 @@ export default function App() {
         <LanguageDeck
           sourceLang={sourceLang}
           targetLang={targetLang}
-          setSourceLang={setSourceLang}
-          setTargetLang={setTargetLang}
-          disabled={isRunning}
+          setSourceLang={handleSetSourceLang}
+          setTargetLang={handleSetTargetLang}
+          disabled={isRunning || !isPro}
+          trialLocked={!isPro}
         />
 
         <SubtitlePanel subtitle={subtitle} isLive={isRunning} status={status} />
 
         <ControlDeck
           isRunning={isRunning}
-          isLoading={false}
           onStart={start}
           onStop={stop}
           subtitle={subtitle}
           onDownload={() => downloadTranscript(transcripts, sourceLang, targetLang)}
           hasTranscripts={transcripts.length > 0}
           disabled={!SUPPORTED}
+          canDownload={isPro}   // trial users see locked state
         />
 
         <TranscriptLog transcripts={transcripts} />
@@ -209,5 +230,13 @@ export default function App() {
         </p>
       </footer>
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthGate>
+      {(authProps) => <MainApp {...authProps} />}
+    </AuthGate>
   )
 }
