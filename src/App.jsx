@@ -15,6 +15,9 @@ function MainApp({ user, isPro, trialLangs, onLogout, daysLeft, expiry, onChange
   // Trial: locked to signup languages; Pro: free to change
   const [sourceLang, setSourceLang] = useState(trialLangs.source)
   const [targetLang, setTargetLang] = useState(trialLangs.target)
+  // Trial: allowed language sets (up to 2 each)
+  const allowedSrc = [trialLangs.source, trialLangs.source2].filter(Boolean)
+  const allowedTgt = [trialLangs.target, trialLangs.target2].filter(Boolean)
   const [isRunning, setIsRunning] = useState(false)
   const [subtitle, setSubtitle] = useState(
     SUPPORTED
@@ -44,11 +47,11 @@ function MainApp({ user, isPro, trialLangs, onLogout, daysLeft, expiry, onChange
 
   // Trial: clamp language selectors to signup languages only
   const handleSetSourceLang = (code) => {
-    if (!isPro) return // locked for trial
+    if (!isPro && !allowedSrc.includes(code)) return
     setSourceLang(code)
   }
   const handleSetTargetLang = (code) => {
-    if (!isPro) return
+    if (!isPro && !allowedTgt.includes(code)) return
     setTargetLang(code)
   }
 
@@ -172,7 +175,7 @@ function MainApp({ user, isPro, trialLangs, onLogout, daysLeft, expiry, onChange
           REAL-TIME — BROWSER-NATIVE
         </div>
         <h1 className="font-display text-4xl md:text-5xl font-bold text-fog mb-3 tracking-tight">
-          Live Translator <span className="text-violet">for Zoom</span>
+          Live Translator <span className="text-violet">for Online Meetings</span>
         </h1>
         <p className="text-mist text-lg">
           Any language. Real time. Nobody in class gets left behind.
@@ -203,7 +206,7 @@ function MainApp({ user, isPro, trialLangs, onLogout, daysLeft, expiry, onChange
           targetLang={targetLang}
           setSourceLang={handleSetSourceLang}
           setTargetLang={handleSetTargetLang}
-          disabled={isRunning || !isPro}
+          disabled={isRunning}
           trialLocked={!isPro}
         />
 
@@ -217,7 +220,8 @@ function MainApp({ user, isPro, trialLangs, onLogout, daysLeft, expiry, onChange
           onDownload={() => downloadTranscript(transcripts, sourceLang, targetLang)}
           hasTranscripts={transcripts.length > 0}
           disabled={!SUPPORTED}
-          canDownload={isPro}   // trial users see locked state
+          canDownload={isPro}
+          canFloat={isPro}
         />
 
         <TranscriptLog transcripts={transcripts} />
