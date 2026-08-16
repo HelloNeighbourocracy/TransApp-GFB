@@ -247,7 +247,9 @@ export default function AuthGate({ children }) {
   const [surname, setSurname] = useState('')
   const [phone, setPhone] = useState('')
   const [signupSrc, setSignupSrc] = useState('en')
+  const [signupSrc2, setSignupSrc2] = useState('')
   const [signupTgt, setSignupTgt] = useState('ta')
+  const [signupTgt2, setSignupTgt2] = useState('')
   const [newPw, setNewPw] = useState('')
   const [signupSuccess, setSignupSuccess] = useState(false)
   const [showSignupPw, setShowSignupPw] = useState(false)
@@ -326,7 +328,9 @@ export default function AuthGate({ children }) {
           data: {
             name, surname, phone,
             source_lang: signupSrc,
+            source_lang2: signupSrc2 || '',
             target_lang: signupTgt,
+            target_lang2: signupTgt2 || '',
             expiry_date: expiry.toISOString().split('T')[0],
             plan: 'trial',
           }
@@ -410,7 +414,12 @@ export default function AuthGate({ children }) {
         setErr('Your trial has expired. Please contact us to upgrade to Pro.')
         return
       }
-      setTrialLangs({ source: meta.source_lang || 'en', target: meta.target_lang || 'ta' })
+      setTrialLangs({
+        source: meta.source_lang || 'en',
+        source2: meta.source_lang2 || '',
+        target: meta.target_lang || 'ta',
+        target2: meta.target_lang2 || '',
+      })
       setUserPlan('trial')
       setScreen(S.APP)
     } else {
@@ -638,29 +647,56 @@ export default function AuthGate({ children }) {
             }}
           />
 
-          {/* Language selectors */}
-          <div style={{ display: 'flex', gap: 10, width: '100%', marginTop: 8 }}>
-            {[
-              { label: '🗣️ Speaker Language', val: signupSrc, set: setSignupSrc },
-              { label: '🌍 Subtitle Language', val: signupTgt, set: setSignupTgt },
-            ].map(({ label, val, set }) => (
-              <div key={label} style={{ flex: 1 }}>
-                <div style={{ fontSize: 10, color: '#888', marginBottom: 4, paddingLeft: 4 }}>{label}</div>
-                <select
-                  value={val}
-                  onChange={e => set(e.target.value)}
-                  style={{
-                    width: '100%', padding: '9px 12px', borderRadius: 14,
-                    border: 'none', outline: 'none', cursor: 'pointer', appearance: 'none',
-                    background: 'linear-gradient(145deg,#d8d8d8,#f8f8f8)',
-                    boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.11), inset -3px -3px 6px rgba(255,255,255,0.85)',
-                    fontSize: 12, color: '#333',
-                  }}
-                >
-                  {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
-                </select>
-              </div>
-            ))}
+          {/* Language selectors — 2 Speaker + 2 Subtitle */}
+          <div style={{ width: '100%', marginTop: 8 }}>
+            <div style={{ fontSize: 10, color: '#6d28d9', fontWeight: 600, marginBottom: 6, paddingLeft: 2 }}>
+              🗣️ Speaker Languages (choose up to 2)
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+              {[
+                { val: signupSrc,  set: setSignupSrc,  ph: 'Speaker 1' },
+                { val: signupSrc2, set: setSignupSrc2, ph: 'Speaker 2 (optional)' },
+              ].map(({ val, set, ph }) => (
+                <div key={ph} style={{ flex: 1, minWidth: 0 }}>
+                  <select value={val} onChange={e => set(e.target.value)}
+                    style={{
+                      width: '100%', padding: '9px 10px', borderRadius: 14,
+                      border: 'none', outline: 'none', cursor: 'pointer', appearance: 'none',
+                      background: 'linear-gradient(145deg,#d8d8d8,#f8f8f8)',
+                      boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.11), inset -3px -3px 6px rgba(255,255,255,0.85)',
+                      fontSize: 11, color: '#333', boxSizing: 'border-box',
+                    }}
+                  >
+                    {ph.includes('optional') && <option value="">— {ph} —</option>}
+                    {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 10, color: '#6d28d9', fontWeight: 600, marginBottom: 6, paddingLeft: 2 }}>
+              🌍 Subtitle Languages (choose up to 2)
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {[
+                { val: signupTgt,  set: setSignupTgt,  ph: 'Subtitle 1' },
+                { val: signupTgt2, set: setSignupTgt2, ph: 'Subtitle 2 (optional)' },
+              ].map(({ val, set, ph }) => (
+                <div key={ph} style={{ flex: 1, minWidth: 0 }}>
+                  <select value={val} onChange={e => set(e.target.value)}
+                    style={{
+                      width: '100%', padding: '9px 10px', borderRadius: 14,
+                      border: 'none', outline: 'none', cursor: 'pointer', appearance: 'none',
+                      background: 'linear-gradient(145deg,#d8d8d8,#f8f8f8)',
+                      boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.11), inset -3px -3px 6px rgba(255,255,255,0.85)',
+                      fontSize: 11, color: '#333', boxSizing: 'border-box',
+                    }}
+                  >
+                    {ph.includes('optional') && <option value="">— {ph} —</option>}
+                    {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
           </div>
 
           {err && (
@@ -814,6 +850,20 @@ export default function AuthGate({ children }) {
             onClick={() => { setErr(''); setSignupSuccess(false); setForgotSent(false); setScreen(S.HOME) }}>
             ← Back
           </NButton>
+          <div style={{ marginTop: 10, fontSize: 12, color: '#888', textAlign: 'center' }}>
+            Don't have an account?{' '}
+            <button
+              type="button"
+              onClick={() => { setErr(''); setSignupSuccess(false); setForgotSent(false); setScreen(S.SIGNUP) }}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#6d28d9', fontWeight: 700, fontSize: 12,
+                textDecoration: 'underline', padding: 0,
+              }}
+            >
+              Sign Up
+            </button>
+          </div>
         </Card>
       )}
 
@@ -921,8 +971,9 @@ export default function AuthGate({ children }) {
               <div>✅ Float subtitles (PiP window)</div>
               <div>✅ Unlimited session time</div>
               <div>✅ Priority support</div>
-              <div style={{ color: '#aaa', marginTop: 4 }}>❌ Trial: locked languages only</div>
+              <div style={{ color: '#aaa', marginTop: 6 }}>❌ Trial: 2 speaker + 2 subtitle languages only</div>
               <div style={{ color: '#aaa' }}>❌ Trial: no transcript download</div>
+              <div style={{ color: '#aaa' }}>❌ Trial: no float subtitles</div>
             </div>
 
             <p style={{ color: '#666', fontSize: 12, marginBottom: 14 }}>
