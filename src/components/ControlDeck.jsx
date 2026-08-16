@@ -3,7 +3,8 @@ import Overlay from './Overlay'
 export default function ControlDeck({
   isRunning, onStart, onStop, subtitle,
   onDownload, hasTranscripts, disabled,
-  canDownload = true   // false = trial user, show locked state
+  canDownload = true,
+  canFloat = true,
 }) {
   return (
     <div className="flex flex-col items-center gap-6">
@@ -25,7 +26,23 @@ export default function ControlDeck({
           )}
         </div>
 
-        <Overlay text={subtitle} />
+        {canFloat
+          ? <Overlay text={subtitle} />
+          : (
+            <button
+              disabled
+              title="Float Subtitles — Pro only"
+              style={{
+                padding: '12px 20px', borderRadius: 999, fontSize: '0.95rem',
+                background: 'linear-gradient(180deg, #232f4c 0%, #161f36 100%)',
+                color: '#64748b', border: '1px solid rgba(245,158,11,0.2)',
+                cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: 8,
+              }}
+            >
+              🔒 Float subtitles
+            </button>
+          )
+        }
       </div>
 
       <div className="w-full max-w-md flex flex-col items-center gap-1.5">
