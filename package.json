@@ -3,7 +3,7 @@
   "private": true,
   "version": "4.0.0",
   "type": "module",
-  "description": "Live Translator for Zoom / Google Meet — real-time speech-to-subtitle translation across 19 languages with trial/pro auth.",
+  "description": "Live Translator for Online Meetings / Google Meet — real-time speech-to-subtitle translation across 19 languages with trial/pro auth.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
