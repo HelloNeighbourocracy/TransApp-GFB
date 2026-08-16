@@ -250,6 +250,11 @@ export default function AuthGate({ children }) {
   const [signupTgt, setSignupTgt] = useState('ta')
   const [newPw, setNewPw] = useState('')
   const [signupSuccess, setSignupSuccess] = useState(false)
+  const [showSignupPw, setShowSignupPw] = useState(false)
+  const [showLoginPw, setShowLoginPw] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
+  const [forgotLoading, setForgotLoading] = useState(false)
   const [newPw2, setNewPw2] = useState('')
 
   // ── Boot: check existing session ──
@@ -257,6 +262,15 @@ export default function AuthGate({ children }) {
     ;(async () => {
       const fp = await getDeviceFingerprint()
       setDeviceFp(fp)
+
+      // Listen for PASSWORD_RECOVERY event (user clicked reset link in email)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          // User arrived via reset link — show change password screen
+          setUser(session.user)
+          setScreen(S.CHANGE_PW)
+        }
+      })
 
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
@@ -331,6 +345,18 @@ export default function AuthGate({ children }) {
     }
   }
 
+  // ── Forgot Password ──
+  async function handleForgotPassword() {
+    if (!email) { setErr('Please enter your email address first.'); return }
+    setForgotLoading(true); setErr('')
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname,
+    })
+    setForgotLoading(false)
+    if (error) { setErr(error.message) }
+    else { setForgotSent(true) }
+  }
+
   // ── Login ──
   async function handleLogin(afterSignup = false) {
     if (!afterSignup) { setErr(''); setLoading(true) }
@@ -401,7 +427,13 @@ export default function AuthGate({ children }) {
       const { error } = await supabase.auth.updateUser({ password: newPw })
       if (error) { setErr(error.message); return }
       setNewPw(''); setNewPw2('')
-      setScreen(S.PLAN_SELECT)
+      // After reset, sign out so user logs in fresh
+      await supabase.auth.signOut()
+      setUser(null)
+      setSignupSuccess(false)
+      setForgotSent(false)
+      setErr('')
+      setScreen(S.LOGIN)
     } finally {
       setLoading(false)
     }
@@ -527,16 +559,17 @@ export default function AuthGate({ children }) {
           </div>
 
           {/* Two-column row: First + Last name */}
-          <div style={{ display: 'flex', gap: 10, width: '100%', marginBottom: 2 }}>
+          <div style={{ display: 'flex', gap: 10, width: '100%', marginBottom: 2, overflow: 'hidden' }}>
             <input
               placeholder="First Name *"
               value={name}
               onChange={e => setName(e.target.value)}
               style={{
-                flex: 1, padding: '11px 16px', borderRadius: 14, border: 'none', outline: 'none',
+                flex: 1, minWidth: 0, width: 0,
+                padding: '11px 16px', borderRadius: 14, border: 'none', outline: 'none',
                 background: 'linear-gradient(145deg,#d8d8d8,#f8f8f8)',
                 boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.11), inset -3px -3px 6px rgba(255,255,255,0.85)',
-                fontSize: 13, color: '#333',
+                fontSize: 13, color: '#333', boxSizing: 'border-box',
               }}
             />
             <input
@@ -544,35 +577,66 @@ export default function AuthGate({ children }) {
               value={surname}
               onChange={e => setSurname(e.target.value)}
               style={{
-                flex: 1, padding: '11px 16px', borderRadius: 14, border: 'none', outline: 'none',
+                flex: 1, minWidth: 0, width: 0,
+                padding: '11px 16px', borderRadius: 14, border: 'none', outline: 'none',
                 background: 'linear-gradient(145deg,#d8d8d8,#f8f8f8)',
                 boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.11), inset -3px -3px 6px rgba(255,255,255,0.85)',
-                fontSize: 13, color: '#333',
+                fontSize: 13, color: '#333', boxSizing: 'border-box',
               }}
             />
           </div>
 
           {/* Full-width fields */}
-          {[
-            { type: 'email',    ph: 'Email *',        val: email,    set: setEmail },
-            { type: 'password', ph: 'Password *',     val: password, set: setPassword },
-            { type: 'tel',      ph: 'Phone Number *', val: phone,    set: setPhone },
-          ].map(({ type, ph, val, set }) => (
+          <input
+            type="email" placeholder="Email *" value={email}
+            onChange={e => setEmail(e.target.value)}
+            style={{
+              width: '100%', padding: '11px 16px', margin: '6px 0',
+              borderRadius: 14, border: 'none', outline: 'none', boxSizing: 'border-box',
+              background: 'linear-gradient(145deg,#d8d8d8,#f8f8f8)',
+              boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.11), inset -3px -3px 6px rgba(255,255,255,0.85)',
+              fontSize: 13, color: '#333',
+            }}
+          />
+          {/* Password with eye icon */}
+          <div style={{ position: 'relative', width: '100%', margin: '6px 0' }}>
             <input
-              key={ph}
-              type={type}
-              placeholder={ph}
-              value={val}
-              onChange={e => set(e.target.value)}
+              type={showSignupPw ? 'text' : 'password'}
+              placeholder="Password *"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
               style={{
-                width: '100%', padding: '11px 16px', margin: '6px 0',
+                width: '100%', padding: '11px 42px 11px 16px',
                 borderRadius: 14, border: 'none', outline: 'none', boxSizing: 'border-box',
                 background: 'linear-gradient(145deg,#d8d8d8,#f8f8f8)',
                 boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.11), inset -3px -3px 6px rgba(255,255,255,0.85)',
                 fontSize: 13, color: '#333',
               }}
             />
-          ))}
+            <button
+              type="button"
+              onClick={() => setShowSignupPw(p => !p)}
+              style={{
+                position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', cursor: 'pointer', padding: 2,
+                color: '#888', fontSize: 16, lineHeight: 1, display: 'flex', alignItems: 'center',
+              }}
+              aria-label={showSignupPw ? 'Hide password' : 'Show password'}
+            >
+              {showSignupPw ? '🙈' : '👁️'}
+            </button>
+          </div>
+          <input
+            type="tel" placeholder="Phone Number *" value={phone}
+            onChange={e => setPhone(e.target.value)}
+            style={{
+              width: '100%', padding: '11px 16px', margin: '6px 0',
+              borderRadius: 14, border: 'none', outline: 'none', boxSizing: 'border-box',
+              background: 'linear-gradient(145deg,#d8d8d8,#f8f8f8)',
+              boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.11), inset -3px -3px 6px rgba(255,255,255,0.85)',
+              fontSize: 13, color: '#333',
+            }}
+          />
 
           {/* Language selectors */}
           <div style={{ display: 'flex', gap: 10, width: '100%', marginTop: 8 }}>
@@ -631,24 +695,123 @@ export default function AuthGate({ children }) {
       {screen === S.LOGIN && (
         <Card>
           <h2 style={{ color: '#333', fontSize: 18, fontWeight: 800, margin: '0 0 8px' }}>Login</h2>
+
+          {/* Signup success banner */}
           {signupSuccess && (
             <div style={{
               background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.35)',
-              borderRadius: 10, padding: '7px 12px', marginBottom: 8, width: '85%',
+              borderRadius: 10, padding: '7px 12px', marginBottom: 6, width: '85%',
               fontSize: 11, color: '#16a34a', textAlign: 'center', fontWeight: 600,
             }}>
               ✅ Account created! Please log in.
             </div>
           )}
-          <NInput type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-          <NInput type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-          {err && <p style={{ color: 'red', fontSize: 11, margin: '6px 0', padding: '0 10px' }}>{err}</p>}
+
+          {/* Forgot password sent banner */}
+          {forgotSent && (
+            <div style={{
+              background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.35)',
+              borderRadius: 10, padding: '7px 12px', marginBottom: 6, width: '85%',
+              fontSize: 11, color: '#4f46e5', textAlign: 'center', fontWeight: 600,
+            }}>
+              📧 Reset link sent! Check your email.
+            </div>
+          )}
+
+          {/* Email input */}
+          <NInput
+            type="email" placeholder="Email"
+            value={email} onChange={e => setEmail(e.target.value)}
+          />
+
+          {/* Password with eye icon */}
+          <div style={{ position: 'relative', width: '85%', margin: '5px 0' }}>
+            <input
+              type={showLoginPw ? 'text' : 'password'}
+              placeholder="Password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              style={{
+                width: '100%', padding: '10px 40px 10px 14px',
+                borderRadius: 30, border: 'none', outline: 'none', boxSizing: 'border-box',
+                background: 'linear-gradient(145deg, #d6d6d6, #f5f5f5)',
+                boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.12), inset -3px -3px 6px rgba(255,255,255,0.8)',
+                fontSize: 13, color: '#333',
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowLoginPw(p => !p)}
+              style={{
+                position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 15, color: '#999', lineHeight: 1,
+              }}
+              aria-label={showLoginPw ? 'Hide password' : 'Show password'}
+            >
+              {showLoginPw ? '🙈' : '👁️'}
+            </button>
+          </div>
+
+          {/* Remember Me + Forgot Password row */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '85%', margin: '8px 0 2px',
+          }}>
+            {/* Remember Me checkbox */}
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer',
+              fontSize: 11, color: '#555', fontWeight: 500, userSelect: 'none',
+            }}>
+              <div
+                onClick={() => setRememberMe(p => !p)}
+                style={{
+                  width: 18, height: 18, borderRadius: 5,
+                  background: rememberMe
+                    ? 'linear-gradient(135deg,#6d28d9,#4f46e5)'
+                    : 'linear-gradient(145deg,#d6d6d6,#f0f0f0)',
+                  boxShadow: rememberMe
+                    ? '0 0 10px rgba(109,40,217,0.5), inset 1px 1px 2px rgba(255,255,255,0.2)'
+                    : 'inset 3px 3px 6px rgba(0,0,0,0.12), inset -2px -2px 5px rgba(255,255,255,0.8)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 200ms ease', cursor: 'pointer', flexShrink: 0,
+                }}
+              >
+                {rememberMe && (
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                    <path d="M2 5.5L4.5 8L9 3" stroke="white" strokeWidth="1.8"
+                      strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+              <span onClick={() => setRememberMe(p => !p)}>Remember me</span>
+            </label>
+
+            {/* Forgot password */}
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={forgotLoading}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 11, color: '#6d28d9', fontWeight: 600,
+                textDecoration: 'underline', padding: 0,
+                opacity: forgotLoading ? 0.6 : 1,
+              }}
+            >
+              {forgotLoading ? 'Sending…' : 'Forgot password?'}
+            </button>
+          </div>
+
+          {err && <p style={{ color: 'red', fontSize: 11, margin: '6px 0', padding: '0 10px', textAlign: 'center' }}>{err}</p>}
+
           <NButton color="linear-gradient(135deg,#6d28d9,#4f46e5)" glow="rgba(109,40,217,0.6)"
-            onClick={() => { setSignupSuccess(false); handleLogin() }} disabled={loading}>
+            onClick={() => { setSignupSuccess(false); setForgotSent(false); handleLogin() }}
+            disabled={loading}>
             {loading ? 'Logging in…' : 'Login'}
           </NButton>
           <NButton color="linear-gradient(135deg,#64748b,#334155)" glow="rgba(100,116,139,0.5)"
-            onClick={() => { setErr(''); setSignupSuccess(false); setScreen(S.HOME) }}>
+            onClick={() => { setErr(''); setSignupSuccess(false); setForgotSent(false); setScreen(S.HOME) }}>
             ← Back
           </NButton>
         </Card>
@@ -867,7 +1030,11 @@ export default function AuthGate({ children }) {
             {/* ── CHANGE PASSWORD ── */}
       {screen === S.CHANGE_PW && (
         <Card>
-          <h2 style={{ color: '#333', fontSize: 18, fontWeight: 800, margin: '0 0 16px' }}>Change Password</h2>
+          <div style={{ fontSize: 28, marginBottom: 6 }}>🔐</div>
+          <h2 style={{ color: '#333', fontSize: 18, fontWeight: 800, margin: '0 0 4px' }}>Set New Password</h2>
+          <p style={{ color: '#888', fontSize: 11, margin: '0 0 14px', textAlign: 'center' }}>
+            Choose a strong password for your account.
+          </p>
           <NInput type="password" placeholder="New Password" value={newPw} onChange={e => setNewPw(e.target.value)} />
           <NInput type="password" placeholder="Confirm New Password" value={newPw2} onChange={e => setNewPw2(e.target.value)} />
           {err && <p style={{ color: 'red', fontSize: 11, margin: '6px 0' }}>{err}</p>}
