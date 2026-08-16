@@ -15,7 +15,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}']
       },
       manifest: {
-        name: 'Live Translator for Zoom',
+        name: 'Live Translator for Online Meetings',
         short_name: 'Translator',
         description: 'Real-time speech translation for online meetings, powered by your browser\u2019s built-in speech recognition',
         start_url: '/TransApp-GFB/',
