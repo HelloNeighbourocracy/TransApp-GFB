@@ -390,15 +390,15 @@ export default function AuthGate({ children }) {
       if (error) { setErr(error.message); return }
 
       const u = data.user
+      const conflict = await checkSessionConflict(u.id, deviceFp)
       await registerSession(u.id, deviceFp)
 
-      // ★★★ FIX: Profile-a inga thaan fetch pannanum ★★★
+      // FIX: Profile-a inga fetch pannanum, illana Trial expired varum
       const meta = u.user_metadata || {}
       await createProfileIfMissing(u.id, { ...meta, email: u.email })
       const profile = await fetchProfile(u.id)
-      const userWithProfile = { ...u, profile }
-      setUser(userWithProfile)
-      
+      setUser({ ...u, profile })
+
       if (kickChannelRef.current) kickChannelRef.current.unsubscribe()
       kickChannelRef.current = subscribeToSessionKick(u.id, deviceFp, async () => {
         await supabase.auth.signOut()
@@ -406,17 +406,13 @@ export default function AuthGate({ children }) {
         setScreen(S.HOME)
         setErr('Your session was taken over by another device. Please log in again.')
       })
-      // Realtime Profile Subscribe (Pro activate panna thana maarum)
+
       if (profileChannelRef.current) supabase.removeChannel(profileChannelRef.current)
       profileChannelRef.current = supabase
         .channel(`profile-${u.id}`)
-        .on('postgres_changes', 
-          { event: 'UPDATE', schema: 'public', table: 'Profiles', filter: `id=eq.${u.id}` },
-          (payload) => {
-            setUser(prev => ({ ...prev, profile: payload.new }))
-          }
-        )
-        .subscribe()
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'Profiles', filter: `id=eq.${u.id}` },
+          (payload) => { setUser(prev => ({ ...prev, profile: payload.new })) }
+        ).subscribe()
 
       setScreen(S.SUCCESS)
       setTimeout(() => setScreen(S.PLAN_SELECT), 2200)
