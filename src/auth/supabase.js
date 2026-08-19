@@ -103,6 +103,55 @@ export async function markTrialUsed(deviceFp) {
 
 // ─── Realtime: kick old device when new device logs in ───────────────────────
 
+// ─── Profile helpers ─────────────────────────────────────────────────────────
+
+export async function fetchProfile(userId) {
+  const { data, error } = await supabase
+    .from('Profiles')
+    .select('*')
+    .eq('id', userId)
+    .single()
+  if (error) return null
+  return data
+}
+
+export async function createProfileIfMissing(userId, metadata) {
+  const { data: existing } = await supabase
+    .from('Profiles')
+    .select('id')
+    .eq('id', userId)
+    .single()
+  if (existing) return // already exists
+
+  await supabase.from('Profiles').insert({
+    id: userId,
+    email: metadata.email || '',
+    name: metadata.name || '',
+    surname: metadata.surname || '',
+    phone: metadata.phone || '',
+    source_lang: metadata.source_lang || 'en',
+    source_lang2: metadata.source_lang2 || '',
+    target_lang: metadata.target_lang || 'ta',
+    target_lang2: metadata.target_lang2 || '',
+    role: 'trial',
+    plan: 'trial_7',
+    subscription: 'active',
+  })
+}
+
+export function isProfileActive(profile) {
+  if (!profile) return false
+  if (profile.subscription !== 'active') return false
+  if (!profile.expires_at) return true // lifetime / friend
+  return new Date(profile.expires_at) > new Date()
+}
+
+export function profileDaysLeft(profile) {
+  if (!profile || !profile.expires_at) return 9999
+  const diff = new Date(profile.expires_at) - new Date()
+  return Math.max(0, Math.ceil(diff / 86400000))
+}
+
 export function subscribeToSessionKick(userId, deviceFp, onKick) {
   return supabase
     .channel(`session_${userId}`)
