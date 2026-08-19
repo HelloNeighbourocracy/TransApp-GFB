@@ -241,7 +241,6 @@ export default function AuthGate({ children }) {
   const [loading, setLoading] = useState(false)
   const [deviceFp, setDeviceFp] = useState('')
   const kickChannelRef = useRef(null)
-  const profileChannelRef = useRef(null)
 
   // Form state
   const [email, setEmail] = useState('')
@@ -312,19 +311,6 @@ export default function AuthGate({ children }) {
       setScreen(S.HOME)
       setErr('Your session was taken over by another device. Please log in again.')
     })
-    
-    // ADDITION - Profile Realtime
-  if (profileChannelRef.current) supabase.removeChannel(profileChannelRef.current)
-  profileChannelRef.current = supabase
-    .channel(`profile-${u.id}`)
-    .on('postgres_changes', 
-      { event: 'UPDATE', schema: 'public', table: 'Profiles', filter: `id=eq.${u.id}` },
-      (payload) => {
-        console.log('Pro activated live!', payload.new)
-        setUser(prev => ({ ...prev, profile: payload.new }))
-      }
-    )
-    .subscribe()
 
     setScreen(S.PLAN_SELECT)
   }
@@ -419,7 +405,6 @@ export default function AuthGate({ children }) {
   async function handleLogout() {
     if (user) await clearSession(user.id)
     if (kickChannelRef.current) kickChannelRef.current.unsubscribe()
-    if (profileChannelRef.current) supabase.removeChannel(profileChannelRef.current)
     await supabase.auth.signOut()
     setUser(null); setUserPlan(null)
     setEmail(''); setPassword('')
