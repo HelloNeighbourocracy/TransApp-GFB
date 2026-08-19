@@ -393,7 +393,7 @@ export default function AuthGate({ children }) {
       const conflict = await checkSessionConflict(u.id, deviceFp)
       await registerSession(u.id, deviceFp)
 
-      // FIX: Profile-a inga fetch pannanum, illana Trial expired varum
+      // FIX: Profile inga fetch pannanum, illana Trial expired varum
       const meta = u.user_metadata || {}
       await createProfileIfMissing(u.id, { ...meta, email: u.email })
       const profile = await fetchProfile(u.id)
