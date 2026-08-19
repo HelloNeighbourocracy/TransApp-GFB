@@ -3,7 +3,9 @@ import {
   supabase, getDeviceFingerprint,
   hasUsedTrial, markTrialUsed,
   registerSession, checkSessionConflict, clearSession,
-  subscribeToSessionKick
+  subscribeToSessionKick,
+  fetchProfile, createProfileIfMissing,
+  isProfileActive, profileDaysLeft,
 } from './supabase'
 import { LANGUAGES } from '../utils/languages'
 
@@ -287,16 +289,21 @@ export default function AuthGate({ children }) {
     // Validate single-device
     const conflict = await checkSessionConflict(u.id, fp)
     if (conflict) {
-      // This device was displaced → force logout
       await supabase.auth.signOut()
       setScreen(S.HOME)
       setErr('You were logged out because your account was used on another device.')
       return
     }
     await registerSession(u.id, fp)
-    setUser(u)
 
-    // Subscribe to real-time kick (other device takes over)
+    // Fetch profile from Profiles table
+    const meta = u.user_metadata || {}
+    await createProfileIfMissing(u.id, { ...meta, email: u.email })
+    const profile = await fetchProfile(u.id)
+    const userWithProfile = { ...u, profile }
+    setUser(userWithProfile)
+
+    // Subscribe to real-time kick
     if (kickChannelRef.current) kickChannelRef.current.unsubscribe()
     kickChannelRef.current = subscribeToSessionKick(u.id, fp, async () => {
       await supabase.auth.signOut()
@@ -406,21 +413,32 @@ export default function AuthGate({ children }) {
 
   // ── Choose plan (after login) ──
   function choosePlan(plan) {
+    const profile = user?.profile
     const meta = user?.user_metadata || {}
+
     if (plan === 'trial') {
-      const exp = meta.expiry_date
-      const todayStr = today()
-      if (!exp || exp < todayStr) {
+      // Use Profiles table data
+      const active = isProfileActive(profile)
+      if (!active) {
         setErr('Your trial has expired. Please contact us to upgrade to Pro.')
         return
       }
       setTrialLangs({
-        source: meta.source_lang || 'en',
-        source2: meta.source_lang2 || '',
-        target: meta.target_lang || 'ta',
-        target2: meta.target_lang2 || '',
+        source:  profile?.source_lang  || meta.source_lang  || 'en',
+        source2: profile?.source_lang2 || meta.source_lang2 || '',
+        target:  profile?.target_lang  || meta.target_lang  || 'ta',
+        target2: profile?.target_lang2 || meta.target_lang2 || '',
       })
       setUserPlan('trial')
+      setScreen(S.APP)
+    } else if (plan === 'pro') {
+      const active = isProfileActive(profile)
+      if (!active) {
+        setErr('Your Pro subscription has expired. Please renew.')
+        setScreen(S.PRO_CONTACT)
+        return
+      }
+      setUserPlan('pro')
       setScreen(S.APP)
     } else {
       setScreen(S.PRO_CONTACT)
@@ -455,11 +473,15 @@ export default function AuthGate({ children }) {
     const exp = meta.expiry_date
     const dl = exp ? daysLeft(exp) : 0
 
+    const profile = user?.profile
+    const isPro2 = profile?.role === 'pro' && isProfileActive(profile)
+    const dl2 = profile ? profileDaysLeft(profile) : 0
     return children({
-      user, isPro, trialLangs,
+      user, isPro: isPro2, trialLangs,
       onLogout: handleLogout,
-      daysLeft: dl,
-      expiry: exp,
+      daysLeft: dl2,
+      expiry: profile?.expires_at || null,
+      plan: profile?.plan || 'trial_7',
       onChangePw: () => setScreen(S.CHANGE_PW),
     })
   }
@@ -869,11 +891,11 @@ export default function AuthGate({ children }) {
 
       {/* ── PLAN SELECT (post-login) ── */}
       {screen === S.PLAN_SELECT && user && (() => {
+        const profile = user.profile
         const meta = user.user_metadata || {}
-        const exp = meta.expiry_date
-        const dl = exp ? daysLeft(exp) : 0
-        const expired = !exp || exp < today()
-        const isPro = meta.plan === 'pro'
+        const isPro = profile?.role === 'pro' && isProfileActive(profile)
+        const dl = profile ? profileDaysLeft(profile) : 0
+        const expired = !isProfileActive(profile)
         return (
           <Card>
             <div style={{ fontSize: 32, marginBottom: 6 }}>✅</div>
@@ -890,7 +912,7 @@ export default function AuthGate({ children }) {
                   fontWeight: 800, fontSize: 13, marginBottom: 12
                 }}>⚡ Pro — {dl > 0 ? `${dl} days left` : 'Expired'}</div>
                 <NButton color="linear-gradient(135deg,#6d28d9,#4f46e5)" glow="rgba(109,40,217,0.6)"
-                  onClick={() => { setUserPlan('pro'); setScreen(S.APP) }}>
+                  onClick={() => choosePlan('pro')}>
                   Open App ▶
                 </NButton>
               </>
@@ -903,7 +925,7 @@ export default function AuthGate({ children }) {
                     </p>
                 }
                 <NButton color="linear-gradient(135deg,#34d399,#059669)" glow="rgba(5,150,105,0.6)"
-                  onClick={() => choosePlan('trial')} disabled={expired}>
+                  onClick={() => choosePlan('trial')} disabled={expired || isPro}>
                   Use Trial (7 Days)
                 </NButton>
                 <NButton color="linear-gradient(135deg,#f59e0b,#d97706)" glow="rgba(245,158,11,0.6)"
