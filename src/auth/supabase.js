@@ -147,9 +147,18 @@ export function isProfileActive(profile) {
 }
 
 export function profileDaysLeft(profile) {
-  if (!profile || !profile.expires_at) return 9999
+  if (!profile?.expires_at) return profile?.plan === 'lifetime' ? 9999 : 0
+  // +1 for including today
   const diff = new Date(profile.expires_at) - new Date()
-  return Math.max(0, Math.ceil(diff / 86400000))
+  return Math.max(0, Math.ceil(diff / 86400000)) // No +1 extra, trigger already 30 days
+}
+
+// isProfileActive um same
+export function isProfileActive(profile) {
+  if (!profile) return false
+  if (profile.plan === 'lifetime') return true
+  if (!profile.expires_at) return false
+  return new Date(profile.expires_at) > new Date()
 }
 
 export function subscribeToSessionKick(userId, deviceFp, onKick) {
