@@ -407,7 +407,18 @@ export default function AuthGate({ children }) {
         setScreen(S.HOME)
         setErr('Your session was taken over by another device. Please log in again.')
       })
-      // Show success animation, then move to plan select
+      // Realtime Profile Subscribe (Pro activate panna thana maarum)
+      if (profileChannelRef.current) supabase.removeChannel(profileChannelRef.current)
+      profileChannelRef.current = supabase
+        .channel(`profile-${u.id}`)
+        .on('postgres_changes', 
+          { event: 'UPDATE', schema: 'public', table: 'Profiles', filter: `id=eq.${u.id}` },
+          (payload) => {
+            setUser(prev => ({ ...prev, profile: payload.new }))
+          }
+        )
+        .subscribe()
+
       setScreen(S.SUCCESS)
       setTimeout(() => setScreen(S.PLAN_SELECT), 2200)
     } finally {
