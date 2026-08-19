@@ -150,7 +150,7 @@ export function profileDaysLeft(profile) {
   if (!profile?.expires_at) return profile?.plan === 'lifetime' ? 9999 : 0
   // +1 for including today
   const diff = new Date(profile.expires_at) - new Date()
-  return Math.max(0, Math.ceil(diff / 86400000)) // No +1 extra, trigger already 30 days
+  return Math.max(0, Math.ceil(diff / 86400000))
 }
 
 // isProfileActive um same
