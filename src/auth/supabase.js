@@ -147,18 +147,9 @@ export function isProfileActive(profile) {
 }
 
 export function profileDaysLeft(profile) {
-  if (!profile) return 0
-  if (!profile.expires_at) return 9999
+  if (!profile || !profile.expires_at) return 9999
   const diff = new Date(profile.expires_at) - new Date()
   return Math.max(0, Math.ceil(diff / 86400000))
-}
-
-// isProfileActive um same
-export function isProfileActive(profile) {
-  if (!profile) return false
-  if (profile.plan === 'lifetime') return true
-  if (!profile.expires_at) return false
-  return new Date(profile.expires_at) > new Date()
 }
 
 export function subscribeToSessionKick(userId, deviceFp, onKick) {
