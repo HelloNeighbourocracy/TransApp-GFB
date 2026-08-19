@@ -82,7 +82,7 @@ export async function registerSession(userId, deviceFp) {
 }
 
 export async function checkSessionConflict(userId, deviceFp) {
-  const { data } = await supabase.from('sessions').select('device_id').eq('user_id', userId).single()
+  const { data } = await supabase.from('sessions').select('device_id').eq('user_id', userId).maybeSingle()
   return data && data.device_id !== deviceFp
 }
 
@@ -93,7 +93,7 @@ export async function clearSession(userId) {
 // ─── Trial helpers ────────────────────────────────────────────────────────────
 
 export async function hasUsedTrial(deviceFp) {
-  const { data } = await supabase.from('used_trials').select('device_id').eq('device_id', deviceFp).single()
+  const { data } = await supabase.from('used_trials').select('device_id').eq('device_id', deviceFp).maybeSingle()
   return !!data
 }
 
@@ -120,7 +120,7 @@ export async function createProfileIfMissing(userId, metadata) {
     .from('Profiles')
     .select('id')
     .eq('id', userId)
-    .single()
+    .maybesingle()
   if (existing) return // already exists
 
   await supabase.from('Profiles').insert({
