@@ -147,7 +147,8 @@ export function isProfileActive(profile) {
 }
 
 export function profileDaysLeft(profile) {
-  if (!profile || !profile.expires_at) return 9999
+  if (!profile) return 0
+  if (!profile.expires_at) return 9999
   const diff = new Date(profile.expires_at) - new Date()
   return Math.max(0, Math.ceil(diff / 86400000))
 }
