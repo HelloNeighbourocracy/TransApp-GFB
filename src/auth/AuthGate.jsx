@@ -286,7 +286,8 @@ export default function AuthGate({ children }) {
     })()
   }, [])
 
-    async function handleLoggedInUser(u, fp) {
+  async function handleLoggedInUser(u, fp) {
+    // Validate single-device
     const conflict = await checkSessionConflict(u.id, fp)
     if (conflict) {
       await supabase.auth.signOut()
@@ -295,12 +296,15 @@ export default function AuthGate({ children }) {
       return
     }
     await registerSession(u.id, fp)
+
+    // Fetch profile from Profiles table
     const meta = u.user_metadata || {}
     await createProfileIfMissing(u.id, { ...meta, email: u.email })
     const profile = await fetchProfile(u.id)
     const userWithProfile = { ...u, profile }
     setUser(userWithProfile)
 
+    // Subscribe to real-time kick
     if (kickChannelRef.current) kickChannelRef.current.unsubscribe()
     kickChannelRef.current = subscribeToSessionKick(u.id, fp, async () => {
       await supabase.auth.signOut()
@@ -308,13 +312,19 @@ export default function AuthGate({ children }) {
       setScreen(S.HOME)
       setErr('Your session was taken over by another device. Please log in again.')
     })
-
-    if (profileChannelRef.current) profileChannelRef.current.unsubscribe()
-    profileChannelRef.current = supabase
-      .channel(`profile-${u.id}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'Profiles', filter: `id=eq.${u.id}` },
-        (payload) => { setUser(prev => ({ ...prev, profile: payload.new })) }
-      ).subscribe()
+    
+    // ADDITION - Profile Realtime
+  if (profileChannelRef.current) supabase.removeChannel(profileChannelRef.current)
+  profileChannelRef.current = supabase
+    .channel(`profile-${u.id}`)
+    .on('postgres_changes', 
+      { event: 'UPDATE', schema: 'public', table: 'Profiles', filter: `id=eq.${u.id}` },
+      (payload) => {
+        console.log('Pro activated live!', payload.new)
+        setUser(prev => ({ ...prev, profile: payload.new }))
+      }
+    )
+    .subscribe()
 
     setScreen(S.PLAN_SELECT)
   }
@@ -373,19 +383,23 @@ export default function AuthGate({ children }) {
   }
 
   // ── Login ──
-    async function handleLogin(afterSignup = false) {
+  async function handleLogin(afterSignup = false) {
     if (!afterSignup) { setErr(''); setLoading(true) }
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) { setErr(error.message); return }
-      const u = data.user
-      await checkSessionConflict(u.id, deviceFp)
-      await registerSession(u.id, deviceFp)
-      const meta = u.user_metadata || {}
-      await createProfileIfMissing(u.id, { ...meta, email: u.email })
-      const profile = await fetchProfile(u.id)
-      setUser({ ...u, profile })
 
+      const u = data.user
+      // Single-device enforcement: if another device is logged in, displace it
+      const conflict = await checkSessionConflict(u.id, deviceFp)
+      if (conflict) {
+        // Displace old device by updating session row → Realtime will kick old device
+        await registerSession(u.id, deviceFp)
+      } else {
+        await registerSession(u.id, deviceFp)
+      }
+
+      setUser(u)
       if (kickChannelRef.current) kickChannelRef.current.unsubscribe()
       kickChannelRef.current = subscribeToSessionKick(u.id, deviceFp, async () => {
         await supabase.auth.signOut()
@@ -393,14 +407,7 @@ export default function AuthGate({ children }) {
         setScreen(S.HOME)
         setErr('Your session was taken over by another device. Please log in again.')
       })
-
-      if (profileChannelRef.current) profileChannelRef.current.unsubscribe()
-      profileChannelRef.current = supabase
-        .channel(`profile-${u.id}`)
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'Profiles', filter: `id=eq.${u.id}` },
-          (payload) => { setUser(prev => ({ ...prev, profile: payload.new })) }
-        ).subscribe()
-
+      // Show success animation, then move to plan select
       setScreen(S.SUCCESS)
       setTimeout(() => setScreen(S.PLAN_SELECT), 2200)
     } finally {
@@ -412,7 +419,7 @@ export default function AuthGate({ children }) {
   async function handleLogout() {
     if (user) await clearSession(user.id)
     if (kickChannelRef.current) kickChannelRef.current.unsubscribe()
-    if (profileChannelRef.current) profileChannelRef.current.unsubscribe()
+    if (profileChannelRef.current) supabase.removeChannel(profileChannelRef.current)
     await supabase.auth.signOut()
     setUser(null); setUserPlan(null)
     setEmail(''); setPassword('')
