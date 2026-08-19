@@ -390,16 +390,15 @@ export default function AuthGate({ children }) {
       if (error) { setErr(error.message); return }
 
       const u = data.user
-      // Single-device enforcement: if another device is logged in, displace it
-      const conflict = await checkSessionConflict(u.id, deviceFp)
-      if (conflict) {
-        // Displace old device by updating session row → Realtime will kick old device
-        await registerSession(u.id, deviceFp)
-      } else {
-        await registerSession(u.id, deviceFp)
-      }
+      await registerSession(u.id, deviceFp)
 
-      setUser(u)
+      // ★★★ FIX: Profile-a inga thaan fetch pannanum ★★★
+      const meta = u.user_metadata || {}
+      await createProfileIfMissing(u.id, { ...meta, email: u.email })
+      const profile = await fetchProfile(u.id)
+      const userWithProfile = { ...u, profile }
+      setUser(userWithProfile)
+      
       if (kickChannelRef.current) kickChannelRef.current.unsubscribe()
       kickChannelRef.current = subscribeToSessionKick(u.id, deviceFp, async () => {
         await supabase.auth.signOut()
