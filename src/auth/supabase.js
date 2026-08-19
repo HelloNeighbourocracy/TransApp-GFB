@@ -82,7 +82,7 @@ export async function registerSession(userId, deviceFp) {
 }
 
 export async function checkSessionConflict(userId, deviceFp) {
-  const { data } = await supabase.from('sessions').select('device_id').eq('user_id', userId).maybeSingle()
+  const { data } = await supabase.from('sessions').select('device_id').eq('user_id', userId).single()
   return data && data.device_id !== deviceFp
 }
 
@@ -93,7 +93,7 @@ export async function clearSession(userId) {
 // ─── Trial helpers ────────────────────────────────────────────────────────────
 
 export async function hasUsedTrial(deviceFp) {
-  const { data } = await supabase.from('used_trials').select('device_id').eq('device_id', deviceFp).maybeSingle()
+  const { data } = await supabase.from('used_trials').select('device_id').eq('device_id', deviceFp).single()
   return !!data
 }
 
@@ -120,7 +120,7 @@ export async function createProfileIfMissing(userId, metadata) {
     .from('Profiles')
     .select('id')
     .eq('id', userId)
-    .maybesingle()
+    .single()
   if (existing) return // already exists
 
   await supabase.from('Profiles').insert({
@@ -147,8 +147,7 @@ export function isProfileActive(profile) {
 }
 
 export function profileDaysLeft(profile) {
-  if (!profile) return 0
-  if (!profile.expires_at) return 9999
+  if (!profile || !profile.expires_at) return 9999
   const diff = new Date(profile.expires_at) - new Date()
   return Math.max(0, Math.ceil(diff / 86400000))
 }
