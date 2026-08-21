@@ -93,12 +93,23 @@ export async function clearSession(userId) {
 // ─── Trial helpers ────────────────────────────────────────────────────────────
 
 export async function hasUsedTrial(deviceFp) {
-  const { data } = await supabase.from('used_trials').select('device_id').eq('device_id', deviceFp).single()
-  return !!data
+  if (!deviceFp) return false
+  try {
+    const { data, error } = await supabase
+      .from('used_trials')
+      .select('device_id')
+      .eq('device_id', deviceFp)
+      .maybeSingle()  // maybeSingle: returns null if not found, no error
+    if (error) return false  // RLS block = treat as not used (safe default)
+    return !!data
+  } catch { return false }
 }
 
 export async function markTrialUsed(deviceFp) {
-  await supabase.from('used_trials').insert({ device_id: deviceFp })
+  if (!deviceFp) return
+  try {
+    await supabase.from('used_trials').insert({ device_id: deviceFp })
+  } catch { /* non-critical - don't block signup */ }
 }
 
 // ─── Realtime: kick old device when new device logs in ───────────────────────
@@ -148,8 +159,14 @@ export function isProfileActive(profile) {
 
 export function profileDaysLeft(profile) {
   if (!profile || !profile.expires_at) return 9999
-  const diff = new Date(profile.expires_at) - new Date()
-  return Math.max(0, Math.ceil(diff / 86400000))
+  // Compare from start of today (midnight) so "today" counts as day 1
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const expiry = new Date(profile.expires_at)
+  const diff = expiry - todayStart
+  // floor: if expiry is today → 0 days, tomorrow → 1 day
+  // +1 to include today itself in the count
+  return Math.max(0, Math.floor(diff / 86400000))
 }
 
 export function subscribeToSessionKick(userId, deviceFp, onKick) {
