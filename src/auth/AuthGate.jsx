@@ -9,6 +9,10 @@ import {
 } from './supabase'
 import { LANGUAGES } from '../utils/languages'
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const errMsg = (e) =>
+  (typeof e === 'string' ? e : e?.message || e?.error_description || JSON.stringify(e) || 'Something went wrong.')
+
 // ─── Screen constants ─────────────────────────────────────────────────────────
 const S = {
   LOADING:       'loading',
@@ -350,7 +354,7 @@ export default function AuthGate({ children }) {
         }
       })
 
-      if (error) { setErr(error.message); return }
+      if (error) { setErr(errMsg(error)); return }
 
       // Check if email already registered (Supabase returns user but identities empty)
       if (data?.user && data.user.identities && data.user.identities.length === 0) {
@@ -379,7 +383,7 @@ export default function AuthGate({ children }) {
       redirectTo: window.location.origin + window.location.pathname,
     })
     setForgotLoading(false)
-    if (error) { setErr(error.message) }
+    if (error) { setErr(errMsg(error)) }
     else { setForgotSent(true) }
   }
 
@@ -388,7 +392,7 @@ export default function AuthGate({ children }) {
     if (!afterSignup) { setErr(''); setLoading(true) }
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) { setErr(error.message); return }
+      if (error) { setErr(errMsg(error)); return }
 
       const u = data.user
       // Single-device enforcement: if another device is logged in, displace it
@@ -400,10 +404,16 @@ export default function AuthGate({ children }) {
         await registerSession(u.id, deviceFp)
       }
 
-      // Fetch profile immediately after login (not just on page reload)
+      // Fetch profile — retry up to 3x (trigger may need a moment to fire)
       const meta2 = u.user_metadata || {}
-      await createProfileIfMissing(u.id, { ...meta2, email: u.email })
-      const profile = await fetchProfile(u.id)
+      let profile = null
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 800))
+        profile = await fetchProfile(u.id)
+        if (profile) break
+        // Profile not yet created by trigger — create manually
+        if (attempt === 1) await createProfileIfMissing(u.id, { ...meta2, email: u.email })
+      }
       const userWithProfile = { ...u, profile }
       setUser(userWithProfile)
 
@@ -488,7 +498,7 @@ export default function AuthGate({ children }) {
       if (newPw !== newPw2) { setErr('Passwords do not match.'); return }
       if (newPw.length < 6) { setErr('Password must be at least 6 characters.'); return }
       const { error } = await supabase.auth.updateUser({ password: newPw })
-      if (error) { setErr(error.message); return }
+      if (error) { setErr(errMsg(error)); return }
       setNewPw(''); setNewPw2('')
       // After reset, sign out so user logs in fresh
       await supabase.auth.signOut()
@@ -929,9 +939,11 @@ export default function AuthGate({ children }) {
       {screen === S.PLAN_SELECT && user && (() => {
         const profile = user.profile
         const meta = user.user_metadata || {}
-        const isPro = profile?.role === 'pro' && isProfileActive(profile)
+        // isPro: role=pro AND subscription active AND not expired
+        const isPro = profile?.role === 'pro' && profile?.subscription === 'active' && isProfileActive(profile)
         const dl = profile ? profileDaysLeft(profile) : 0
-        const expired = !isProfileActive(profile)
+        // expired: profile exists but not active (trial/pro both)
+        const expired = profile ? !isProfileActive(profile) : false
         return (
           <Card>
             <div style={{ fontSize: 32, marginBottom: 6 }}>✅</div>
