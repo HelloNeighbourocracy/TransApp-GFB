@@ -319,34 +319,49 @@ export default function AuthGate({ children }) {
   async function handleSignup() {
     setErr(''); setLoading(true)
     try {
-      // Device trial check
-      const used = await hasUsedTrial(deviceFp)
+      // Validate required fields
+      if (!name.trim()) { setErr('Please enter your first name.'); return }
+      if (!email.trim()) { setErr('Please enter your email.'); return }
+      if (!password || password.length < 6) { setErr('Password must be at least 6 characters.'); return }
+
+      // Device trial check — get fresh fingerprint
+      const fp = deviceFp || await getDeviceFingerprint()
+      let used = false
+      try { used = await hasUsedTrial(fp) } catch { used = false }
       if (used) {
         setErr('Trial already used on this device. Please contact us for Pro access.')
         return
       }
 
-      const expiry = new Date()
-      expiry.setDate(expiry.getDate() + 7)
-
       const { data, error } = await supabase.auth.signUp({
-        email, password,
+        email: email.trim(),
+        password,
         options: {
           data: {
-            name, surname, phone,
+            name: name.trim(),
+            surname: surname.trim(),
+            phone: phone.trim(),
             source_lang: signupSrc,
             source_lang2: signupSrc2 || '',
             target_lang: signupTgt,
             target_lang2: signupTgt2 || '',
-            expiry_date: expiry.toISOString().split('T')[0],
             plan: 'trial',
           }
         }
       })
+
       if (error) { setErr(error.message); return }
 
-      await markTrialUsed(deviceFp)
-      // Signup done → clear password, go to Login page
+      // Check if email already registered (Supabase returns user but identities empty)
+      if (data?.user && data.user.identities && data.user.identities.length === 0) {
+        setErr('This email is already registered. Please login instead.')
+        return
+      }
+
+      // Mark trial used for this device
+      try { await markTrialUsed(fp) } catch { /* non-critical */ }
+
+      // Signup done → clear form, go to Login page
       setPassword('')
       setSignupSuccess(true)
       setScreen(S.LOGIN)
@@ -385,7 +400,13 @@ export default function AuthGate({ children }) {
         await registerSession(u.id, deviceFp)
       }
 
-      setUser(u)
+      // Fetch profile immediately after login (not just on page reload)
+      const meta2 = u.user_metadata || {}
+      await createProfileIfMissing(u.id, { ...meta2, email: u.email })
+      const profile = await fetchProfile(u.id)
+      const userWithProfile = { ...u, profile }
+      setUser(userWithProfile)
+
       if (kickChannelRef.current) kickChannelRef.current.unsubscribe()
       kickChannelRef.current = subscribeToSessionKick(u.id, deviceFp, async () => {
         await supabase.auth.signOut()
@@ -393,6 +414,21 @@ export default function AuthGate({ children }) {
         setScreen(S.HOME)
         setErr('Your session was taken over by another device. Please log in again.')
       })
+
+      // Realtime: if admin activates Pro while user is on PLAN_SELECT, auto-refresh
+      if (profileChannelRef.current) supabase.removeChannel(profileChannelRef.current)
+      profileChannelRef.current = supabase
+        .channel(`profile-login-${u.id}`)
+        .on('postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'Profiles', filter: `id=eq.${u.id}` },
+          async () => {
+            // Re-fetch fresh profile and update user state
+            const freshProfile = await fetchProfile(u.id)
+            setUser(prev => ({ ...prev, profile: freshProfile }))
+          }
+        )
+        .subscribe()
+
       // Show success animation, then move to plan select
       setScreen(S.SUCCESS)
       setTimeout(() => setScreen(S.PLAN_SELECT), 2200)
