@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createRecognizer, isSpeechRecognitionSupported } from './utils/speechRecognition'
 import { translate } from './utils/translator'
 import { downloadTranscript } from './utils/pdfExport'
-import { LANGUAGES, speechLangFor } from './utils/languages'
+import { LANGUAGES, speechLangFor, AUTO_DETECT_CODE } from './utils/languages'
 import LanguageDeck from './components/LanguageDeck'
 import SubtitlePanel from './components/SubtitlePanel'
 import ControlDeck from './components/ControlDeck'
@@ -47,6 +47,8 @@ function MainApp({ user, isPro, trialLangs, onLogout, daysLeft, expiry, onChange
 
   // Trial: clamp language selectors to signup languages only
   const handleSetSourceLang = (code) => {
+    // Auto Detect available for Pro only (trial users have fixed signup languages)
+    if (!isPro && code === AUTO_DETECT_CODE) return
     if (!isPro && !allowedSrc.includes(code)) return
     setSourceLang(code)
   }
@@ -187,7 +189,7 @@ function MainApp({ user, isPro, trialLangs, onLogout, daysLeft, expiry, onChange
             borderRadius: 12, padding: '8px 16px', marginTop: 12,
             color: '#fbbf24', fontSize: 13,
           }}>
-            🔒 Trial: Languages locked to your signup selection.{' '}
+            🔒 Trial: Languages locked to signup selection. Auto Detect is Pro only.{' '}
             <span style={{ color: '#94a3b8' }}>Upgrade to Pro for all 19 languages + transcript download.</span>
           </div>
         )}
