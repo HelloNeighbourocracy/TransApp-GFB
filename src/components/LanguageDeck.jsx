@@ -1,4 +1,4 @@
-import { LANGUAGES } from '../utils/languages'
+import { LANGUAGES, AUTO_DETECT_CODE } from '../utils/languages'
 
 export default function LanguageDeck({ sourceLang, targetLang, setSourceLang, setTargetLang, disabled }) {
   const swap = () => {
@@ -15,6 +15,7 @@ export default function LanguageDeck({ sourceLang, targetLang, setSourceLang, se
         value={sourceLang}
         onChange={setSourceLang}
         disabled={disabled}
+        isSource={true}
       />
 
       <button
@@ -40,7 +41,7 @@ export default function LanguageDeck({ sourceLang, targetLang, setSourceLang, se
   )
 }
 
-function LangSelect({ label, icon, value, onChange, disabled, align }) {
+function LangSelect({ label, icon, value, onChange, disabled, align, isSource = false }) {
   // Find selected language to show its flag next to the dropdown
   const selected = LANGUAGES.find((l) => l.code === value)
 
@@ -55,7 +56,7 @@ function LangSelect({ label, icon, value, onChange, disabled, align }) {
           className="pl-4 text-2xl select-none pointer-events-none"
           aria-hidden="true"
         >
-          {selected?.flag}
+          {value === AUTO_DETECT_CODE ? '🌐' : selected?.flag}
         </span>
         <select
           value={value}
@@ -63,6 +64,11 @@ function LangSelect({ label, icon, value, onChange, disabled, align }) {
           disabled={disabled}
           className="flex-1 bg-transparent text-fog pl-2 pr-4 py-4 rounded-2xl text-lg font-display font-medium outline-none appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
         >
+          {isSource && (
+            <option key={AUTO_DETECT_CODE} value={AUTO_DETECT_CODE} className="bg-panel text-fog">
+              🌐  Auto Detect / Hybrid
+            </option>
+          )}
           {LANGUAGES.map((l) => (
             <option key={l.code} value={l.code} className="bg-panel text-fog">
               {l.flag}  {l.name} — {l.nativeName}
