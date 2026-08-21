@@ -1,8 +1,11 @@
-// 19 languages. `code` is used for translation (MyMemory langpair);
+// 19 languages + Auto Detect option.
+// `code` is used for translation (MyMemory langpair);
 // `speechLang` is the BCP-47 tag the browser's Speech Recognition needs;
-// `nativeName` is the language's own name written in its own script, so
-// someone who can't read English can still recognize their language in
-// the exported transcript.
+// `nativeName` is the language's own name written in its own script.
+
+// Special code for Auto Detect — used only in source (speaker) dropdown
+export const AUTO_DETECT_CODE = 'auto'
+
 export const LANGUAGES = [
   { code: 'en', name: 'English',    nativeName: 'English',    speechLang: 'en-US', flag: '🇬🇧' },
   { code: 'fr', name: 'French',     nativeName: 'Français',   speechLang: 'fr-FR', flag: '🇫🇷' },
@@ -34,5 +37,7 @@ export function nativeLangName(code) {
 }
 
 export function speechLangFor(code) {
+  // AUTO: empty string → Web Speech API auto-detects spoken language
+  if (code === AUTO_DETECT_CODE) return ''
   return LANGUAGES.find((l) => l.code === code)?.speechLang || 'en-US'
 }
