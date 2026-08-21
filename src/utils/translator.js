@@ -19,17 +19,15 @@ const cache = new Map()
 
 export async function translate(text, sourceLang, targetLang) {
   if (!text) return text
-  // Auto detect: MyMemory supports 'autodetect' as source langpair
-  const effectiveSource = sourceLang === 'auto' ? 'autodetect' : sourceLang
-  if (effectiveSource !== 'autodetect' && effectiveSource === targetLang) return text
+  if (sourceLang === targetLang) return text
 
-  const cacheKey = `${effectiveSource}|${targetLang}|${text}`
+  const cacheKey = `${sourceLang}|${targetLang}|${text}`
   if (cache.has(cacheKey)) return cache.get(cacheKey)
 
   try {
     const params = new URLSearchParams({
       q: text,
-      langpair: `${effectiveSource}|${targetLang}`
+      langpair: `${sourceLang}|${targetLang}`
     })
     if (MYMEMORY_EMAIL) params.set('de', MYMEMORY_EMAIL)
 
