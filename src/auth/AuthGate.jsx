@@ -291,15 +291,17 @@ export default function AuthGate({ children }) {
   }, [])
 
   async function handleLoggedInUser(u, fp) {
-    // Validate single-device
-    const conflict = await checkSessionConflict(u.id, fp)
+    // Register session first (page reload — JWT already in client)
+    await registerSession(u.id, fp).catch(() => {})
+
+    // Then check if another device was displaced
+    const conflict = await checkSessionConflict(u.id, fp).catch(() => false)
     if (conflict) {
       await supabase.auth.signOut()
       setScreen(S.HOME)
       setErr('You were logged out because your account was used on another device.')
       return
     }
-    await registerSession(u.id, fp)
 
     // Fetch profile from Profiles table
     const meta = u.user_metadata || {}
@@ -396,13 +398,20 @@ export default function AuthGate({ children }) {
       if (error) { setErr(errMsg(error)); return }
 
       const u = data.user
-      // Single-device enforcement: if another device is logged in, displace it
-      const conflict = await checkSessionConflict(u.id, deviceFp)
-      if (conflict) {
-        // Displace old device by updating session row → Realtime will kick old device
-        await registerSession(u.id, deviceFp)
-      } else {
-        await registerSession(u.id, deviceFp)
+      const session = data.session
+
+      // Explicitly set session so RLS auth.uid() works immediately
+      if (session) await supabase.auth.setSession(session)
+
+      // Single-device enforcement (session now authenticated for RLS)
+      // Skip conflict check on first login (no existing session row)
+      try {
+        const conflict = await checkSessionConflict(u.id, deviceFp)
+        if (conflict) await registerSession(u.id, deviceFp)
+        else await registerSession(u.id, deviceFp)
+      } catch { 
+        // RLS or network error — register session anyway
+        await registerSession(u.id, deviceFp).catch(() => {})
       }
 
       // Fetch profile — retry up to 3x (trigger may need a moment to fire)
