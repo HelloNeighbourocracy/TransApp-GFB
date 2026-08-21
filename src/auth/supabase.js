@@ -159,14 +159,13 @@ export function isProfileActive(profile) {
 
 export function profileDaysLeft(profile) {
   if (!profile || !profile.expires_at) return 9999
-  // Compare from start of today (midnight) so "today" counts as day 1
+  // Use UTC dates only to avoid timezone drift
   const now = new Date()
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   const expiry = new Date(profile.expires_at)
-  const diff = expiry - todayStart
-  // floor: if expiry is today → 0 days, tomorrow → 1 day
-  // +1 to include today itself in the count
-  return Math.max(0, Math.floor(diff / 86400000))
+  const expiryUTC = Date.UTC(expiry.getUTCFullYear(), expiry.getUTCMonth(), expiry.getUTCDate())
+  // Difference in full days (floor). Monthly=30days: start day counts, so day1=30, last=1
+  return Math.max(0, Math.floor((expiryUTC - todayUTC) / 86400000))
 }
 
 export function subscribeToSessionKick(userId, deviceFp, onKick) {
