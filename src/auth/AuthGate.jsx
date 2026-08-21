@@ -245,6 +245,7 @@ export default function AuthGate({ children }) {
   const [loading, setLoading] = useState(false)
   const [deviceFp, setDeviceFp] = useState('')
   const kickChannelRef = useRef(null)
+  const profileChannelRef = useRef(null)
 
   // Form state
   const [email, setEmail] = useState('')
